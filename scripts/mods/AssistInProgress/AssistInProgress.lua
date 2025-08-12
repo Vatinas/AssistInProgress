@@ -1,5 +1,9 @@
 local mod = get_mod("AssistInProgress")
 
+
+----------------
+-- Utility stuff
+
 mod.players_being_helped = {}
 
 local table_remove_elem = function(table, element)
@@ -25,6 +29,10 @@ local name_from_player = function(player)
 		return "A:"..tostring(account_name)
 	end
 end
+
+
+----------------------------
+-- Track who is being helped
 
 mod:hook_safe(CLASS.CharacterStateMachine, "fixed_update", function(self, unit, dt, t, frame, ...)
     local state = self._state_current
@@ -52,15 +60,31 @@ mod:hook_safe(CLASS.CharacterStateMachine, "fixed_update", function(self, unit, 
     end
 end)
 
+
+------------------------------------------------------------------------------
+-- Adapt the icon on player portraits if a player is disabled but being helped
+
 mod:hook_safe(CLASS.HudElementPlayerPanelBase, "_update_player_features", function(self, dt, t, player, ui_renderer)
+    local supported_features = self._supported_features
+    if not supported_features.status_icon then
+        return
+    end
     if not table.contains(mod.players_being_helped, player) then
         return
     end
     -- Player is being helped
-    --local player_status = self._player_status
-    --local status_icon = UIHudSettings.player_status_icons[player_status]
+    local player_status = self._player_status
+    local status_icon = UIHudSettings.player_status_icons[player_status]
     --local status_color = UIHudSettings.player_status_colors[player_status]
+    -- Make status icon rainbow (for testing)
+    local col = function()
+        return math.floor(1 + 254 * math.random())
+    end
+    local status_color = {255, col(), col(), col()}
+    self:_set_status_icon(status_icon, status_color, ui_renderer)
+    --[[
     local widgets_by_name = self._widgets_by_name
 	local widget = widgets_by_name.status_icon
     self:_set_widget_visible(widget, false, ui_renderer)
+    --]]
 end)
