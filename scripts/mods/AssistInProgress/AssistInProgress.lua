@@ -1,5 +1,6 @@
 local mod = get_mod("AssistInProgress")
 
+local UIHudSettings = require("scripts/settings/ui/ui_hud_settings")
 
 ----------------
 -- Utility stuff
@@ -62,9 +63,10 @@ end)
 
 
 ------------------------------------------------------------------------------
--- Adapt the icon on player portraits if a player is disabled but being helped
+--
 
-mod:hook_safe(CLASS.HudElementPlayerPanelBase, "_update_player_features", function(self, dt, t, player, ui_renderer)
+-- Hook function - Adapt the icon on player portraits if a player is disabled but being helped
+local set_portrait_icons = function(self, dt, t, player, ui_renderer)
     local supported_features = self._supported_features
     if not supported_features.status_icon then
         return
@@ -87,4 +89,64 @@ mod:hook_safe(CLASS.HudElementPlayerPanelBase, "_update_player_features", functi
 	local widget = widgets_by_name.status_icon
     self:_set_widget_visible(widget, false, ui_renderer)
     --]]
+end
+
+-- Hook function - 
+local handle_assist_world_marker = function(self, dt, t, player, ui_renderer)
+    local extensions = self:_player_extensions(player)
+    local health_extension = extensions and extensions.health
+    local unit_data_extension = extensions and extensions.unit_data
+    local parent = self._parent
+    --local disabled = self._disabled
+    --local hogtied = self._hogtied
+
+    local dead
+	if health_extension then
+		dead = not health_extension or not health_extension:is_alive()
+	else
+		dead = true
+	end
+
+    local disabled = false
+	local knocked_down = false
+	local hogtied = false
+	local ledge_hanging = false
+	local pounced = false
+	local netted = false
+	local warp_grabbed = false
+	local mutant_charged = false
+	local consumed = false
+	local grabbed = false
+
+	if not dead then
+		disabled, knocked_down, hogtied, ledge_hanging, pounced, netted, warp_grabbed, mutant_charged, consumed, grabbed = self:_is_player_disabled(unit_data_extension)
+	end
+
+    if self._disabled_world_marker_id and table.contains(mod.players_being_helped, player) then
+        -- World marker exists for disabled player, but they are being helped, so we remove the marker
+        mod:echo("Removing assist world marker for player: "..name_from_player(player))
+        Managers.event:trigger("remove_world_marker", self._disabled_world_marker_id)
+        self._disabled_world_marker_id = nil
+    end
+
+    -- TODO: Add world marker if assist in cancelled?
+
+    --[[
+    if disabled and not hogtied and not consumed then
+		local my_player = parent:player()
+
+		if my_player ~= player and not self._disabled_world_marker_id then
+			local player_unit = player.player_unit
+
+			if Unit.alive(player_unit)  then
+
+            end
+        end
+    end
+    --]]
+end
+
+mod:hook_safe(CLASS.HudElementPlayerPanelBase, "_update_player_features", function(self, dt, t, player, ui_renderer)
+    set_portrait_icons(self, dt, t, player, ui_renderer)
+    handle_assist_world_marker(self, dt, t, player, ui_renderer)
 end)
